@@ -4,13 +4,14 @@ interface Props {
   cover?: string; focus?: string; soon: string;
 }
 const { href, title, summary, year, kind, tone, cover, focus = '50% 50%', soon } = Astro.props;
+import { url } from '../i18n';
 const base = import.meta.env.BASE_URL;
 ---
 <a class="card" href={href} data-cbub>
   <div class:list={['media', tone]}>
     <div class="px" data-parallax>
       {cover
-        ? <img src={`${base}${cover.replace(/^\//, '')}`} alt={title} loading="lazy" decoding="async" style={`object-position:${focus}`} />
+        ? <img src={url(base, cover)} alt={title} loading="lazy" decoding="async" style={`object-position:${focus}`} />
         : (
           /* until the real cover arrives: a typographic cover, not a fake screenshot */
           <div class="type">

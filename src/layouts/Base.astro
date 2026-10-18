@@ -1,7 +1,7 @@
 ---
 import '../styles/global.css';
 import Menu from '../components/Menu.astro';
-import { t, type Lang, otherLangPath } from '../i18n';
+import { t, type Lang, otherLangPath, url } from '../i18n';
 
 interface Props { lang: Lang; title?: string; description?: string }
 const { lang, title, description } = Astro.props;
@@ -19,7 +19,7 @@ const pageTitle = title ? `${title} | ${d.name}` : d.title;
     <meta name="description" content={description ?? d.description} />
     <meta name="theme-color" content="#fdfdfb" />
     <link rel="alternate" hreflang={lang === 'ru' ? 'en' : 'ru'} href={alt} />
-    <link rel="icon" href={`${base}favicon.svg`} type="image/svg+xml" />
+    <link rel="icon" href={url(base, 'favicon.svg')} type="image/svg+xml" />
     <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={description ?? d.description} />
     <meta property="og:type" content="website" />

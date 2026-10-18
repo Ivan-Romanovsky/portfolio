@@ -1,13 +1,13 @@
 ---
 import Nav from './Nav.astro';
-import { t, contacts, type Lang } from '../i18n';
+import { t, contacts, type Lang, url } from '../i18n';
 import grid from '../../public/character/grid.json';
 
 interface Props { lang: Lang }
 const { lang } = Astro.props;
 const d = t[lang];
 const base = import.meta.env.BASE_URL;
-const src = `${base}character/`;
+const src = url(base, 'character/');
 const [bx, by, bx1, by1] = grid.box;
 // head canvas positioned in % of the frame, so it sits exactly over the base image at any size
 const box = {
