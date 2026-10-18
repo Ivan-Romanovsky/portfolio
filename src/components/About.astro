@@ -1,0 +1,36 @@
+---
+import { t, words, type Lang } from '../i18n';
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const d = t[lang].about;
+const parts = words(d.text);
+---
+<section class="about gut" id="about">
+  <div class="wrap">
+    <p class="stmt" data-words>
+      {parts.map((p) => p.startsWith('{')
+        ? <span class="w"><span class="mark flair">{p.slice(1, -1)}</span></span>
+        : p.split(/(\s+)/).map((w) => (w.trim() ? <span class="w">{w}</span> : w)))}
+    </p>
+    <ul class="facts">
+      {d.facts.map(([k, v]) => <li><strong>{k}</strong><span>{v}</span></li>)}
+    </ul>
+  </div>
+</section>
+
+<style>
+  .about { padding-block: clamp(96px, 14vw, 200px) clamp(80px, 11vw, 160px); }
+  .stmt {
+    margin: 0 0 0 auto; max-width: 21ch;
+    font-weight: 500; font-size: clamp(32px, 4.6vw, 68px); line-height: 1.06; letter-spacing: -0.04em; text-wrap: pretty;
+  }
+  /* facts sit under the statement as a quiet four-up row, no cards */
+  .facts { list-style: none; margin: clamp(64px, 9vw, 128px) 0 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(20px, 3vw, 48px); }
+  .facts li { display: grid; gap: 6px; align-content: start; min-width: 0; }
+  .facts strong { font-weight: 500; font-size: clamp(20px, 1.8vw, 26px); letter-spacing: -0.03em; line-height: 1.15; }
+  .facts span { color: var(--mute); font-size: 15px; max-width: 24ch; }
+  @media (max-width: 900px) {
+    .stmt { margin: 0; }
+    .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 36px; }
+  }
+</style>

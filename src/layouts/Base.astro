@@ -1,0 +1,36 @@
+---
+import '../styles/global.css';
+import Menu from '../components/Menu.astro';
+import { t, type Lang, otherLangPath } from '../i18n';
+
+interface Props { lang: Lang; title?: string; description?: string }
+const { lang, title, description } = Astro.props;
+const d = t[lang];
+const base = import.meta.env.BASE_URL;
+const alt = otherLangPath(Astro.url.pathname, base, lang);
+const pageTitle = title ? `${title} | ${d.name}` : d.title;
+---
+<!doctype html>
+<html lang={d.htmlLang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={description ?? d.description} />
+    <meta name="theme-color" content="#fdfdfb" />
+    <link rel="alternate" hreflang={lang === 'ru' ? 'en' : 'ru'} href={alt} />
+    <link rel="icon" href={`${base}favicon.svg`} type="image/svg+xml" />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description ?? d.description} />
+    <meta property="og:type" content="website" />
+    <script is:inline>document.documentElement.classList.add('js')</script>
+  </head>
+  <body>
+    <Menu lang={lang} />
+    <slot />
+    <div class="cbub" aria-hidden="true">{d.cases.view}</div>
+    <script>
+      import '../scripts/motion';
+    </script>
+  </body>
+</html>

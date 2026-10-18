@@ -1,0 +1,9 @@
+tools/LivePortrait/
+.DS_Store
+node_modules/
+dist/
+.astro/
+.env
+preview/
+assets/character/gaze/
+CLAUDE.md

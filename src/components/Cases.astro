@@ -1,0 +1,41 @@
+---
+import { getCollection } from 'astro:content';
+import CaseCard from './CaseCard.astro';
+import { t, type Lang, url } from '../i18n';
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const d = t[lang].cases;
+const base = import.meta.env.BASE_URL;
+const items = (await getCollection('cases', (e) => e.id.startsWith(`${lang}/`) && !e.data.draft))
+  .sort((a, b) => a.data.order - b.data.order);
+---
+<section class="cases gut" id="cases">
+  <div class="wrap">
+    <div class="head">
+      <h2 class="h-xl" data-reveal><span class="line"><span>{d.title}<sup class="cnt">{String(items.length).padStart(2, '0')}</sup></span></span></h2>
+    </div>
+    <div class="grid">
+      {items.map((e) => (
+        <CaseCard
+          href={url(base, `${lang === 'en' ? 'en/' : ''}cases/${e.id.split('/')[1]}/`)}
+          title={e.data.title} summary={e.data.summary} year={e.data.year} kind={e.data.kind}
+          tone={e.data.tone} cover={e.data.cover} focus={e.data.focus} soon={d.soon}
+        />
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .cases { padding-block: 0 clamp(96px, 13vw, 180px); }
+  .head { display: flex; align-items: flex-start; gap: 12px; margin-bottom: clamp(40px, 6vw, 80px); }
+  .head h2 { max-width: 16ch; }
+  .cnt { font: 400 14px/1 var(--f-mono); letter-spacing: 0; color: var(--mute); vertical-align: top; margin-left: 0.3em; position: relative; top: 0.4em; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: clamp(16px, 2.4vw, 32px); row-gap: clamp(56px, 7vw, 96px); align-items: start; }
+  .grid > :global(.card:nth-child(even)) { margin-top: clamp(80px, 14vw, 220px); }
+  @media (max-width: 680px) {
+    .grid { grid-template-columns: 1fr; }
+    .grid > :global(.card:nth-child(even)) { margin-top: 0; }
+  }
+</style>

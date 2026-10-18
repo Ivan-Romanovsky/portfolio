@@ -1,0 +1,44 @@
+---
+import { t, type Lang } from '../i18n';
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const d = t[lang].services;
+---
+<section class="services gut" id="services">
+  <div class="wrap">
+    <h2 class="h-xl" data-reveal><span class="line"><span>{d.title}</span></span></h2>
+    <ol>
+      {d.items.map((s) => (
+        <li>
+          <h3>{s.name}</h3>
+          <p>{s.text}</p>
+          <div class="price"><strong>{s.price}</strong><span>{s.time}</span></div>
+        </li>
+      ))}
+    </ol>
+    <p class="note">{d.note}</p>
+  </div>
+</section>
+
+<style>
+  .services { padding-block: clamp(96px, 12vw, 170px); background: var(--paper); }
+  h2 { margin-bottom: clamp(40px, 6vw, 72px); }
+  /* rows, not cards: a mint fill sweeps in from the left on hover */
+  ol { list-style: none; margin: 0; padding: 0; border-top: 1px solid #dcd9cf; }
+  li {
+    position: relative; isolation: isolate; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.4fr) minmax(0, 0.8fr);
+    gap: clamp(16px, 3vw, 48px); align-items: baseline; padding: clamp(24px, 3vw, 40px) 0; border-bottom: 1px solid #dcd9cf;
+  }
+  li::before { content: ''; position: absolute; inset: 0 calc(-1 * var(--pad)); z-index: -1; background: var(--mint); transform: scaleX(0); transform-origin: left; transition: transform 0.6s var(--ease); border-radius: var(--r); }
+  @media (hover: hover) { li:hover::before { transform: scaleX(1); } li:hover p, li:hover .price span { color: var(--ink); } }
+  h3 { margin: 0; font-weight: 500; font-size: clamp(26px, 2.8vw, 42px); line-height: 1.05; letter-spacing: -0.04em; }
+  p { margin: 0; color: var(--ink-2); font-size: 17px; max-width: 40ch; transition: color 0.3s var(--ease); }
+  .price { display: grid; gap: 4px; justify-items: end; text-align: right; }
+  .price strong { font-weight: 500; font-size: clamp(20px, 1.8vw, 26px); letter-spacing: -0.03em; white-space: nowrap; }
+  .price span { color: var(--mute); font-size: 14px; transition: color 0.3s var(--ease); }
+  .note { margin: 28px 0 0; color: var(--mute); font-size: 15px; max-width: 60ch; }
+  @media (max-width: 860px) {
+    li { grid-template-columns: 1fr; gap: 10px; }
+    .price { justify-items: start; text-align: left; grid-auto-flow: column; justify-content: start; gap: 14px; align-items: baseline; }
+  }
+</style>

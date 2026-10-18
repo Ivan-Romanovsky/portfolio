@@ -1,0 +1,43 @@
+---
+import { t, contacts, type Lang } from '../i18n';
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const d = t[lang];
+const [q, rest] = d.contact.title.split('?');
+---
+<footer class="contact gut" id="contact">
+  <div class="wrap">
+    <h2 data-reveal>
+      <span class="line"><span>{q}?</span></span>
+      <span class="line"><span>{rest.trim()}<em>.</em></span></span>
+    </h2>
+    <div class="row">
+      <a class="btn mint big" href={`https://t.me/${contacts.telegram}`} target="_blank" rel="noopener">{d.contact.telegram} <span class="arr">→</span></a>
+      <a class="mail" href={`mailto:${contacts.email}`}>{contacts.email}</a>
+    </div>
+    {d.contact.note && <p class="note">{d.contact.note}</p>}
+    <div class="foot">
+      <span>© {new Date().getFullYear()} {d.name}</span>
+      <span class="links">
+        <a href={contacts.behance} target="_blank" rel="noopener">Behance</a>
+        <a href={`https://t.me/${contacts.telegram}`} target="_blank" rel="noopener">Telegram</a>
+      </span>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .contact { background: var(--ink); color: var(--bg); padding-block: clamp(96px, 14vw, 200px) 28px; margin-top: 0; }
+  h2 { margin: 0 0 clamp(40px, 5vw, 64px); font-weight: 500; font-size: clamp(52px, 10vw, 156px); line-height: 0.95; letter-spacing: -0.065em; }
+  h2 em { font-style: normal; color: var(--mint); }
+  .row { display: flex; gap: 28px; flex-wrap: wrap; align-items: center; }
+  .btn.big { font-size: 17px; padding: 20px 28px; }
+  .mail { font: 400 16px/1 var(--f-mono); text-decoration: none; color: var(--on-ink-mute); transition: color 0.3s var(--ease); }
+  @media (hover: hover) { .mail:hover { color: var(--mint); } }
+  .note { margin: 24px 0 0; color: var(--on-ink-mute); font-size: 15px; max-width: 56ch; }
+  .foot { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-top: clamp(96px, 12vw, 180px); padding-top: 20px; border-top: 1px solid var(--on-ink-line); font-size: 14px; color: var(--on-ink-mute); }
+  .links { display: flex; gap: 22px; }
+  .foot a { text-decoration: none; transition: color 0.3s var(--ease); }
+  @media (hover: hover) { .foot a:hover { color: var(--mint); } }
+  .contact :global(a:focus-visible) { outline-color: var(--mint); }
+</style>

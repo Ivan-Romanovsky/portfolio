@@ -1,0 +1,98 @@
+---
+import { t, contacts, type Lang, otherLangPath, url } from '../i18n';
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const d = t[lang];
+const base = import.meta.env.BASE_URL;
+const home = url(base, lang === 'en' ? 'en/' : '');
+const links = [
+  [d.nav.cases, `${home}#cases`],
+  [d.nav.about, `${home}#about`],
+  [d.nav.services, `${home}#services`],
+  [d.nav.contact, `${home}#contact`],
+];
+---
+<button class="mbtn" type="button" aria-expanded="false" aria-controls="menu" data-menu-btn>
+  <span class="t" data-open>{d.nav.menu}</span><span class="t" data-close>{d.nav.close}</span>
+  <span class="ic" aria-hidden="true"><i></i><i></i></span>
+</button>
+
+<div class="menu" id="menu" role="dialog" aria-modal="true" aria-label={d.nav.menu} data-menu hidden>
+  <div class="in">
+    <nav aria-label={d.nav.menu}>
+      <ul>
+        {links.map(([label, href]) => <li><a href={href} data-menu-link><span>{label}</span></a></li>)}
+      </ul>
+    </nav>
+    <div class="side">
+      <a class="btn mint" href={`https://t.me/${contacts.telegram}`} target="_blank" rel="noopener">{d.cta} <span class="arr">→</span></a>
+      <a class="mail" href={`mailto:${contacts.email}`}>{contacts.email}</a>
+      <div class="row">
+        <a href={contacts.behance} target="_blank" rel="noopener">Behance</a>
+        <a href={`https://t.me/${contacts.telegram}`} target="_blank" rel="noopener">Telegram</a>
+        <a href={otherLangPath(Astro.url.pathname, base, lang)}>{d.langSwitch}</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .mbtn {
+    position: fixed; z-index: 60; right: var(--gut-r); top: calc(env(safe-area-inset-top, 0px) + 16px);
+    display: inline-flex; align-items: center; gap: 12px; padding: 10px 12px 10px 18px; border-radius: 999px; border: 0;
+    background: var(--ink); color: var(--bg); font: 500 14px/1 var(--f-sans); cursor: pointer;
+    transform: translateY(-140%); transition: transform 0.6s var(--ease), background-color 0.3s var(--ease), color 0.3s var(--ease);
+  }
+  .mbtn.show, .mbtn[aria-expanded='true'] { transform: none; }
+  .mbtn[aria-expanded='true'] { background: var(--mint); color: var(--ink); }
+  .t { display: block; }
+  [data-close] { display: none; }
+  .mbtn[aria-expanded='true'] [data-open] { display: none; }
+  .mbtn[aria-expanded='true'] [data-close] { display: block; }
+  .ic { position: relative; width: 26px; height: 26px; border-radius: 50%; background: var(--bg); }
+  .ic i { position: absolute; left: 8px; right: 8px; height: 1.5px; background: var(--ink); top: 50%; transition: transform 0.4s var(--ease); }
+  .ic i:first-child { transform: translateY(-2.5px); }
+  .ic i:last-child { transform: translateY(2.5px); }
+  .mbtn[aria-expanded='true'] .ic i:first-child { transform: rotate(45deg); }
+  .mbtn[aria-expanded='true'] .ic i:last-child { transform: rotate(-45deg); }
+
+  .menu { position: fixed; inset: 0; z-index: 55; background: var(--ink); color: var(--bg); clip-path: inset(0 0 100% 0); transition: clip-path 0.8s var(--ease-io); }
+  .menu.open { clip-path: inset(0 0 0 0); }
+  .menu[hidden] { display: block; visibility: hidden; }
+  .in { height: 100%; display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 40px; align-items: end; padding: 96px var(--gut-r) 40px var(--gut); max-width: 1400px; margin: 0 auto; }
+  ul { list-style: none; margin: 0; padding: 0; }
+  li a { display: block; overflow: hidden; text-decoration: none; font-weight: 500; font-size: clamp(44px, 7.4vw, 104px); line-height: 1.02; letter-spacing: -0.05em; }
+  li a span { display: inline-block; transform: translateY(105%); transition: transform 0.8s var(--ease), color 0.3s var(--ease); }
+  .menu.open li a span { transform: none; }
+  .menu.open li:nth-child(2) a span { transition-delay: 0.05s, 0s; }
+  .menu.open li:nth-child(3) a span { transition-delay: 0.1s, 0s; }
+  .menu.open li:nth-child(4) a span { transition-delay: 0.15s, 0s; }
+  @media (hover: hover) { li a:hover span { color: var(--mint); } }
+  .side { display: grid; gap: 22px; justify-items: start; padding-bottom: 12px; }
+  .mail { font: 400 15px/1 var(--f-mono); text-decoration: none; color: var(--on-ink-mute); }
+  .row { display: flex; gap: 22px; font-size: 14px; }
+  .row a { text-decoration: none; color: var(--on-ink-mute); transition: color 0.3s var(--ease); }
+  @media (hover: hover) { .row a:hover, .mail:hover { color: var(--mint); } }
+  .menu :global(a:focus-visible) { outline-color: var(--mint); }
+  @media (max-width: 760px) {
+    .mbtn { transform: none; }
+    .in { grid-template-columns: 1fr; align-content: end; }
+  }
+</style>
+
+<script>
+  const btn = document.querySelector<HTMLButtonElement>('[data-menu-btn]')!;
+  const menu = document.querySelector<HTMLElement>('[data-menu]')!;
+  const hero = document.querySelector('[data-hero]');
+  const set = (open: boolean) => {
+    btn.setAttribute('aria-expanded', String(open));
+    if (open) { menu.hidden = false; requestAnimationFrame(() => menu.classList.add('open')); document.documentElement.style.overflow = 'hidden'; }
+    else { menu.classList.remove('open'); document.documentElement.style.overflow = ''; setTimeout(() => { if (!menu.classList.contains('open')) menu.hidden = true; }, 800); }
+  };
+  btn.addEventListener('click', () => set(btn.getAttribute('aria-expanded') !== 'true'));
+  menu.querySelectorAll('[data-menu-link]').forEach((a) => a.addEventListener('click', () => set(false)));
+  addEventListener('keydown', (e) => { if (e.key === 'Escape' && btn.getAttribute('aria-expanded') === 'true') { set(false); btn.focus(); } });
+  // the button shows up once the top navigation has scrolled away (always shown on pages without a hero)
+  if (hero) new IntersectionObserver(([e]) => btn.classList.toggle('show', !e.isIntersecting), { rootMargin: '-35% 0px 0px 0px' }).observe(hero);
+  else btn.classList.add('show');
+</script>
