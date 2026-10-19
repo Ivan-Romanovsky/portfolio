@@ -1,150 +1,127 @@
 /**
- * Head that follows the cursor.
- * Frames: public/character/g_CC_RR.webp — a cols × rows grid of head poses generated with LivePortrait
- * (tools/gaze), cropped to the moving region. The base image (shoulders, backdrop) is a plain <img>,
- * the canvas on top only redraws the head.
+ * Character that turns its head toward the cursor: the Framer / "mascot follows the cursor" approach
+ * (cursor drives the time of a head-turn video), with the seek latency taken out.
  *
- * Feel: always one crisp frame (blending two generated frames looks soft), a critically damped spring
- * walks the head through neighbouring ~1° frames, following is deliberately approximate.
+ * public/character (tools/gaze/clip.py + Real-ESRGAN + encode.swift, from assets/character/source/look8.mp4):
+ *   base.webp   the whole room, neutral pose, enhanced: a plain <img>
+ *   head.mp4    the head square, original frames enhanced with Real-ESRGAN x4plus
+ *   clip.json   head box in scene pixels, fps, 8 segments [first, last]: neutral -> extreme
+ *
+ * On load the video is stepped through once and every frame is kept as an ImageBitmap, sized to the
+ * pixels the head really occupies on this screen. After that nothing seeks: each animation frame
+ * draws from memory. The position along a segment is fractional; two neighbouring video frames
+ * (1/24 s apart) are cross-faded by that fraction while moving, so motion is continuous, and at rest
+ * it settles on one crisp frame. Every segment starts with the same neutral frame, so changing
+ * direction (always through the center) is seamless.
  */
 
-type Grid = { cols: number; rows: number; w: number; h: number; box: number[] };
+type Clip = { w: number; h: number; box: [number, number, number, number]; fps: number; frames: number; seg: Record<string, [number, number]>; src?: number[] };
 
-const STIFFNESS = 220 / 1.5; // tuned by eye in preview/gaze.html (softness 1.5)
-const IDLE_MS = 3000;
+const SECTORS = ['right', 'downright', 'down', 'downleft', 'left', 'upleft', 'up', 'upright'];
+const STIFF = 170;        // spring along a segment: higher = snappier
+const DEAD = 0.05;        // no reaction this close to the face (fraction of the screen)
 
 export async function mountCharacter(root: HTMLElement) {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  if (!('createImageBitmap' in window)) return;
   const src = root.dataset.src!;
-  const canvas = root.querySelector<HTMLCanvasElement>('canvas.head')!;
+  const canvas = root.querySelector<HTMLCanvasElement>('canvas')!;
   const cx = canvas.getContext('2d')!;
-  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const coarse = matchMedia('(pointer: coarse)').matches;
+  const C: Clip = await (await fetch(src + 'clip.json')).json();
 
-  const G: Grid = await (await fetch(src + 'grid.json')).json();
-  const { cols, rows } = G;
-  const mc = (cols - 1) / 2, mr = (rows - 1) / 2;
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const frames: (ImageBitmap | HTMLImageElement | undefined)[] = new Array(cols * rows);
+  const frames: (ImageBitmap | undefined)[] = new Array(C.frames);
+  let decodedUpTo = -1;
 
-  const load = (url: string) => new Promise<HTMLImageElement>((res, rej) => {
-    const i = new Image(); i.decoding = 'async'; i.onload = () => res(i); i.onerror = rej; i.src = url;
-  });
-  const bitmap = async (url: string) => {
-    const img = await load(url);
-    return 'createImageBitmap' in window ? createImageBitmap(img) : img;
+  const start = async () => {
+    // decode at the size the head is shown at on this screen (capped by the source)
+    const css = canvas.getBoundingClientRect().width;
+    const lowMem = ((navigator as any).deviceMemory ?? 8) <= 4;
+    // 127 decoded frames live in memory: ~1.75x of the CSS size is sharp on retina and keeps it near 300 MB
+    const size = Math.round(Math.min(css * Math.min(lowMem ? 1.25 : 1.75, devicePixelRatio || 1), 880));
+    canvas.width = canvas.height = Math.max(240, size);
+
+    const blob = await (await fetch(src + 'head.mp4')).blob();
+    const v = document.createElement('video');
+    v.muted = true; v.playsInline = true; v.preload = 'auto';
+    v.src = URL.createObjectURL(blob);
+    await new Promise<void>((res, rej) => { v.onloadeddata = () => res(); v.onerror = () => rej(); });
+    const opts: ImageBitmapOptions = { resizeWidth: canvas.width, resizeHeight: canvas.height, resizeQuality: 'high' };
+    for (let i = 0; i < C.frames; i++) {
+      await new Promise<void>((res) => { v.onseeked = () => res(); v.currentTime = (i + 0.5) / C.fps; });
+      frames[i] = await createImageBitmap(v, opts);
+      decodedUpTo = i;
+      if (i === 0) { draw(0, 0); canvas.classList.add('on'); requestAnimationFrame(frame); }
+    }
+    URL.revokeObjectURL(v.src);
   };
-
-  // load center-out, so the head can start moving long before the edges arrive
-  const ring = (k: number) => Math.max(Math.abs((k % cols) - mc) / mc, Math.abs(Math.floor(k / cols) - mr) / mr);
-  const order = Array.from({ length: cols * rows }, (_, k) => k).sort((a, b) => ring(a) - ring(b));
-  let reach = 0; // how far from the center (0..1) frames are already loaded in every direction
-  let blink: ImageBitmap | HTMLImageElement | undefined;
-
-  if (reduce) return; // the base image alone is the reduced-motion version
-
-  const start = () => {
-    (async () => {
-      const queue = order.slice();
-      const worker = async () => {
-        while (queue.length) {
-          const k = queue.shift()!;
-          frames[k] = await bitmap(`${src}g_${pad(k % cols)}_${pad(Math.floor(k / cols))}.webp`).catch(() => undefined);
-        }
-      };
-      // track reach in order so a slow request never lets the head wander into a hole
-      const tick = setInterval(() => {
-        let i = 0;
-        while (i < order.length && frames[order[i]]) i++;
-        reach = i >= order.length ? 1 : ring(order[i]) - 1e-6;
-        if (reach >= 1) clearInterval(tick);
-      }, 120);
-      await Promise.all(Array.from({ length: 6 }, worker));
-      blink = await bitmap(`${src}blink.webp`).catch(() => undefined);
-    })();
-    requestAnimationFrame(frame);
-  };
-  // the first screen comes first: frames start after the page has loaded
   if (document.readyState === 'complete') start(); else addEventListener('load', start, { once: true });
 
   // ---- input ----
-  const P = { x: innerWidth / 2, y: innerHeight * 0.4 };
-  let last = -1e9;
-  let lookUntil = 0; // touch: look at the tap point for a moment
-  addEventListener('pointermove', (e) => {
-    if (e.pointerType === 'touch') return;
-    P.x = e.clientX; P.y = e.clientY; last = performance.now();
-  }, { passive: true });
-  addEventListener('pointerdown', (e) => {
-    if (e.pointerType !== 'touch') return;
-    P.x = e.clientX; P.y = e.clientY; last = performance.now(); lookUntil = last + 1600;
-  }, { passive: true });
-
-  // phones: scrolling makes him glance down at the content, then he settles
-  let scrollKick = 0, lastY = scrollY;
-  addEventListener('scroll', () => {
-    const dy = scrollY - lastY; lastY = scrollY;
-    if (coarse) scrollKick = Math.max(-1, Math.min(1, scrollKick + dy / 400));
-  }, { passive: true });
-
+  let px = innerWidth / 2, py = innerHeight * 0.4, moved = false, lookUntil = 0;
+  addEventListener('pointermove', (e) => { if (e.pointerType !== 'touch') { px = e.clientX; py = e.clientY; moved = true; } }, { passive: true });
+  addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') { px = e.clientX; py = e.clientY; lookUntil = performance.now() + 1800; } }, { passive: true });
   let visible = true;
   new IntersectionObserver(([e]) => { visible = e.isIntersecting; }).observe(root);
+  let face = { x: 0, y: 0 };
+  const measure = () => { const r = canvas.getBoundingClientRect(); face = { x: r.left + r.width / 2, y: r.top + r.height * 0.45 }; };
+  measure();
+  addEventListener('resize', measure, { passive: true });
+  addEventListener('scroll', measure, { passive: true });
 
-  // ---- motion ----
-  const S = { u: 0, v: 0, vu: 0, vv: 0 };
-  const w = Math.sqrt(STIFFNESS);
-  const spring = (x: number, vx: number, target: number, dt: number): [number, number] => {
-    vx += (w * w * (target - x) - 2 * w * vx) * dt;
-    return [x + vx * dt, vx];
-  };
-  const clamp = (x: number, a: number, b: number) => Math.max(a, Math.min(b, x));
-  // dead zone around the face, soft saturation: following is approximate on purpose
-  const ease = (d: number, dz: number, amp: number) => {
-    const m = Math.max(0, Math.abs(d) - dz) / (1 - dz);
-    return Math.sign(d) * Math.tanh(m * 1.6) * amp;
-  };
+  // ---- drawing: frame index + fraction toward the next one ----
+  let drawnKey = '';
+  function draw(i: number, frac: number) {
+    const key = `${i}:${frac.toFixed(2)}`;
+    if (key === drawnKey || !frames[i]) return;
+    drawnKey = key;
+    cx.globalAlpha = 1;
+    cx.drawImage(frames[i]!, 0, 0, canvas.width, canvas.height);
+    const next = frames[i + 1];
+    // blend only frames that follow each other in the source video (1/24 s apart); across a skipped
+    // blink or the jump at a segment start, blending would double the eyes, so it snaps instead
+    const adjacent = !C.src || C.src[i + 1] - C.src[i] === 1;
+    if (frac > 0.01 && next && adjacent) { cx.globalAlpha = frac; cx.drawImage(next, 0, 0, canvas.width, canvas.height); cx.globalAlpha = 1; }
+  }
 
-  let idleT = { u: 0, v: 0 }, nextIdle = 0, nextBlink = performance.now() + 2500, blinkStart = -1;
-  let prev = performance.now(), drawn: number | 'blink' | -1 = -1;
+  // ---- motion: one direction at a time, change of direction through the neutral frame ----
+  let dir = 'left', p = 0, vp = 0, prev = performance.now();
+  let idle = { u: 0, v: 0 }, nextIdle = 0;
+  const w = Math.sqrt(STIFF);
+  const debug: number[][] | null = location.search.includes('gaze-debug') ? ((window as any).__gaze = []) : null;
+
+  const target = (now: number) => {
+    const idleNow = coarse ? now > lookUntil : !moved;
+    if (idleNow) {
+      if (now > nextIdle) {
+        idle = Math.random() < 0.35 ? { u: 0, v: 0 } : { u: (Math.random() * 2 - 1) * 0.8, v: (Math.random() * 2 - 1) * 0.6 };
+        nextIdle = now + 2200 + Math.random() * 2600;
+      }
+      return idle;
+    }
+    return { u: (px - face.x) / innerWidth, v: (py - face.y) / innerHeight };
+  };
 
   function frame(now: number) {
     requestAnimationFrame(frame);
     const dt = Math.min(0.05, (now - prev) / 1000); prev = now;
-    if (!visible || reach <= 0) return;
+    if (!visible) return;
+    const t = target(now);
+    const mag = Math.hypot(t.u, t.v * 1.2);
+    const want = SECTORS[(Math.round(Math.atan2(t.v, t.u) / (Math.PI / 4)) + 8) % 8];
+    let pT = mag < DEAD ? 0 : Math.min(1, (mag - DEAD) / 0.38);
+    if (want !== dir) pT = 0;                                    // back to the neutral frame first
+    vp += (w * w * (pT - p) - 2 * w * vp) * dt;
+    p = Math.max(0, Math.min(1, p + vp * dt));
+    if (want !== dir && p < 0.02 && C.seg[want][1] <= decodedUpTo) { dir = want; p = 0; vp = 0; }
 
-    const r = canvas.getBoundingClientRect();
-    const fx = r.left + r.width / 2, fy = r.top + r.height * 0.45;
-    let tu: number, tv: number;
-    const active = coarse ? now < lookUntil : now - last < IDLE_MS;
-    if (active) {
-      tu = ease(clamp((P.x - fx) / (innerWidth * 0.5), -1, 1), 0.06, 1);
-      tv = ease(clamp((P.y - fy) / (innerHeight * 0.5), -1, 1), 0.1, 0.9);
-    } else {
-      if (now > nextIdle) {
-        idleT = { u: (Math.random() * 2 - 1) * 0.6, v: (Math.random() * 2 - 1) * 0.35 };
-        nextIdle = now + 1800 + Math.random() * 2400;
-      }
-      tu = idleT.u; tv = idleT.v;
-    }
-    if (coarse) { tv = clamp(tv + scrollKick * 0.8, -1, 1); scrollKick *= 0.92; }
-    tu = clamp(tu, -reach, reach); tv = clamp(tv, -reach, reach);
-
-    [S.u, S.vu] = spring(S.u, S.vu, tu, dt);
-    [S.v, S.vv] = spring(S.v, S.vv, tv, dt);
-
-    const c = Math.round((clamp(S.u, -1, 1) + 1) / 2 * (cols - 1));
-    const rr = Math.round((clamp(S.v, -1, 1) + 1) / 2 * (rows - 1));
-    const centered = Math.abs(c - mc) <= 2 && Math.abs(rr - mr) <= 1;
-
-    // blink: hard swap to the closed-eyes frame for ~120 ms, only when looking roughly straight
-    if (now > nextBlink) { if (centered && blink) blinkStart = now; nextBlink = now + 2500 + Math.random() * 4000; }
-    const blinking = blinkStart > 0 && now - blinkStart < 120 && centered;
-    if (blinkStart > 0 && now - blinkStart >= 120) blinkStart = -1;
-
-    // a frame that has not arrived yet falls back to the straight pose, so a blink never sticks
-    const center = Math.round(mr) * cols + Math.round(mc);
-    const k = frames[rr * cols + c] ? rr * cols + c : center;
-    const key = blinking ? 'blink' : k;
-    const img = blinking ? blink : frames[k];
-    if (key !== drawn && img) { drawn = key; cx.drawImage(img, 0, 0); }
+    const [a, b] = C.seg[dir];
+    let pos = a + p * (b - a);
+    pos = Math.min(pos, decodedUpTo);
+    let i = Math.floor(pos), frac = pos - i;
+    if (Math.abs(vp) < 0.02) { i = Math.round(pos); frac = 0; }   // at rest: one crisp frame
+    if (i >= b) { i = b; frac = 0; }
+    draw(i, frac);
+    if (debug) debug.push([now, pos, i + frac]);
   }
 }

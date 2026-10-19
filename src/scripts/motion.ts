@@ -26,10 +26,6 @@ if (!reduce) {
     });
   });
 
-  // the name rises out of the bottom edge
-  const wm = document.querySelector('[data-wordmark] .line > span');
-  if (wm) gsap.fromTo(wm, { yPercent: 100 }, { yPercent: 0, duration: 1.4, ease: EASE, delay: 0.1 });
-
   // statement: words go from pale to ink while scrolling, then the mint marker draws in
   document.querySelectorAll<HTMLElement>('[data-words]').forEach((p) => {
     const tl = gsap.timeline({ scrollTrigger: { trigger: p, start: 'top 80%', end: 'bottom 55%', scrub: true } });

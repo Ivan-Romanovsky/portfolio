@@ -12,87 +12,104 @@ const links = [
   [d.nav.contact, `${home}#contact`],
 ];
 ---
+<!-- Bram-style menu: a quiet "Menu +" after the first screen, a dark panel sliding in from the right -->
 <button class="mbtn" type="button" aria-expanded="false" aria-controls="menu" data-menu-btn>
-  <span class="t" data-open>{d.nav.menu}</span><span class="t" data-close>{d.nav.close}</span>
-  <span class="ic" aria-hidden="true"><i></i><i></i></span>
+  <span data-open>{d.nav.menu}</span><span data-close>{d.nav.close}</span><span class="plus" aria-hidden="true">+</span>
 </button>
 
-<div class="menu" id="menu" role="dialog" aria-modal="true" aria-label={d.nav.menu} data-menu hidden>
-  <div class="in">
-    <nav aria-label={d.nav.menu}>
-      <ul>
-        {links.map(([label, href]) => <li><a href={href} data-menu-link><span>{label}</span></a></li>)}
-      </ul>
-    </nav>
-    <div class="side">
-      <a class="btn mint" href={`https://t.me/${contacts.telegram}`} target="_blank" rel="noopener">{d.cta} <span class="arr">→</span></a>
-      <a class="mail" href={`mailto:${contacts.email}`}>{contacts.email}</a>
-      <div class="row">
-        <a href={contacts.behance} target="_blank" rel="noopener">Behance</a>
-        <a href={`https://t.me/${contacts.telegram}`} target="_blank" rel="noopener">Telegram</a>
-        <a href={otherLangPath(Astro.url.pathname, base, lang)}>{d.langSwitch}</a>
-      </div>
+<div class="shade" data-menu-shade hidden></div>
+<aside class="menu" id="menu" aria-label={d.nav.menu} data-menu hidden>
+  <nav aria-label={d.nav.menu}>
+    <ul>
+      {links.map(([label, href]) => <li><a href={href} data-menu-link><span class="mark" aria-hidden="true">+</span><span class="txt">{label}</span></a></li>)}
+    </ul>
+  </nav>
+  <div class="foot">
+    <span class="tag">{lang === 'ru' ? 'Связь' : 'Contacts'}</span>
+    <div class="row">
+      <a href={`https://t.me/${contacts.telegram}`} target="_blank" rel="noopener">Telegram</a>
+      <a href={contacts.behance} target="_blank" rel="noopener">Behance</a>
+      <a href={`mailto:${contacts.email}`}>{lang === 'ru' ? 'Почта' : 'Email'}</a>
+      <a href={otherLangPath(Astro.url.pathname, base, lang)}>{d.langSwitch}</a>
     </div>
   </div>
-</div>
+</aside>
 
 <style>
   .mbtn {
-    position: fixed; z-index: 60; right: var(--gut-r); top: calc(env(safe-area-inset-top, 0px) + 16px);
-    display: inline-flex; align-items: center; gap: 12px; padding: 10px 12px 10px 18px; border-radius: 999px; border: 0;
-    background: var(--ink); color: var(--bg); font: 500 14px/1 var(--f-sans); cursor: pointer;
-    transform: translateY(-140%); transition: transform 0.6s var(--ease), background-color 0.3s var(--ease), color 0.3s var(--ease);
+    position: fixed; z-index: 70; right: var(--gut-r); top: calc(env(safe-area-inset-top, 0px) + 18px);
+    display: inline-flex; align-items: center; gap: 6px; padding: 6px 2px; border: 0; background: none; cursor: pointer;
+    font: 500 15px/1 var(--f-sans);
+    /* white + difference: reads dark on the light page and light on the dark footer and panel */
+    color: #fff; mix-blend-mode: difference;
+    opacity: 0; transform: translateY(-8px); pointer-events: none;
+    transition: opacity 0.4s var(--ease), transform 0.4s var(--ease);
   }
-  .mbtn.show, .mbtn[aria-expanded='true'] { transform: none; }
-  .mbtn[aria-expanded='true'] { background: var(--mint); color: var(--ink); }
-  .t { display: block; }
+  .mbtn.show, .mbtn[aria-expanded='true'] { opacity: 1; transform: none; pointer-events: auto; }
+  .plus { display: inline-block; font-size: 17px; transition: transform 0.5s var(--ease); }
+  .mbtn[aria-expanded='true'] .plus { transform: rotate(45deg); }
   [data-close] { display: none; }
   .mbtn[aria-expanded='true'] [data-open] { display: none; }
-  .mbtn[aria-expanded='true'] [data-close] { display: block; }
-  .ic { position: relative; width: 26px; height: 26px; border-radius: 50%; background: var(--bg); }
-  .ic i { position: absolute; left: 8px; right: 8px; height: 1.5px; background: var(--ink); top: 50%; transition: transform 0.4s var(--ease); }
-  .ic i:first-child { transform: translateY(-2.5px); }
-  .ic i:last-child { transform: translateY(2.5px); }
-  .mbtn[aria-expanded='true'] .ic i:first-child { transform: rotate(45deg); }
-  .mbtn[aria-expanded='true'] .ic i:last-child { transform: rotate(-45deg); }
+  .mbtn[aria-expanded='true'] [data-close] { display: inline; }
+  @media (hover: hover) { .mbtn:hover .plus { transform: rotate(90deg); } .mbtn[aria-expanded='true']:hover .plus { transform: rotate(135deg); } }
 
-  .menu { position: fixed; inset: 0; z-index: 55; background: var(--ink); color: var(--bg); clip-path: inset(0 0 100% 0); transition: clip-path 0.8s var(--ease-io); }
-  .menu.open { clip-path: inset(0 0 0 0); }
-  .menu[hidden] { display: block; visibility: hidden; }
-  .in { height: 100%; display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 40px; align-items: end; padding: 96px var(--gut-r) 40px var(--gut); max-width: 1400px; margin: 0 auto; }
-  ul { list-style: none; margin: 0; padding: 0; }
-  li a { display: block; overflow: hidden; text-decoration: none; font-weight: 500; font-size: clamp(44px, 7.4vw, 104px); line-height: 1.02; letter-spacing: -0.05em; }
-  li a span { display: inline-block; transform: translateY(105%); transition: transform 0.8s var(--ease), color 0.3s var(--ease); }
-  .menu.open li a span { transform: none; }
-  .menu.open li:nth-child(2) a span { transition-delay: 0.05s, 0s; }
-  .menu.open li:nth-child(3) a span { transition-delay: 0.1s, 0s; }
-  .menu.open li:nth-child(4) a span { transition-delay: 0.15s, 0s; }
-  @media (hover: hover) { li a:hover span { color: var(--mint); } }
-  .side { display: grid; gap: 22px; justify-items: start; padding-bottom: 12px; }
-  .mail { font: 400 15px/1 var(--f-mono); text-decoration: none; color: var(--on-ink-mute); }
-  .row { display: flex; gap: 22px; font-size: 14px; }
-  .row a { text-decoration: none; color: var(--on-ink-mute); transition: color 0.3s var(--ease); }
-  @media (hover: hover) { .row a:hover, .mail:hover { color: var(--mint); } }
-  .menu :global(a:focus-visible) { outline-color: var(--mint); }
+  .shade { position: fixed; inset: 0; z-index: 60; background: rgba(18, 18, 18, 0.35); opacity: 0; transition: opacity 0.6s var(--ease); }
+  .shade.open { opacity: 1; }
+  .shade[hidden] { display: block; visibility: hidden; }
+
+  .menu {
+    position: fixed; z-index: 65; top: 0; right: 0; bottom: 0; width: max(30vw, 400px);
+    display: grid; grid-template-rows: 1fr auto; padding: 96px 48px 36px 70px;
+    background: #121212; color: var(--bg);
+    transform: translateX(100%); transition: transform 0.8s var(--ease-io);
+  }
+  .menu.open { transform: none; }
+  .menu[hidden] { display: grid; visibility: hidden; }
+  .menu nav { align-self: center; }
+  ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  li a { position: relative; display: inline-flex; align-items: flex-start; text-decoration: none; font-weight: 400; font-size: clamp(40px, 4vw, 58px); line-height: 1; letter-spacing: -0.03em; overflow: hidden; }
+  .txt { display: inline-block; transform: translateY(105%); transition: transform 0.8s var(--ease), color 0.3s var(--ease); }
+  .menu.open .txt { transform: none; }
+  .menu.open li:nth-child(2) .txt { transition-delay: 0.06s, 0s; }
+  .menu.open li:nth-child(3) .txt { transition-delay: 0.12s, 0s; }
+  .menu.open li:nth-child(4) .txt { transition-delay: 0.18s, 0s; }
+  .mark { position: absolute; left: -24px; top: 0.1em; font-size: 18px; color: var(--mint); opacity: 0; transition: opacity 0.3s var(--ease); }
+  @media (hover: hover) { li a:hover .mark { opacity: 1; } li a:hover .txt { color: var(--mint); } }
+  .foot { display: grid; gap: 10px; }
+  .tag { color: var(--on-ink-mute); font-size: 12px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 14px; }
+  .row a { color: var(--on-ink-mute); text-decoration: none; transition: color 0.3s var(--ease); }
+  @media (hover: hover) { .row a:hover { color: var(--bg); } }
+  .menu :global(a:focus-visible), .mbtn:focus-visible { outline-color: var(--mint); }
+
   @media (max-width: 760px) {
-    .mbtn { transform: none; }
-    .in { grid-template-columns: 1fr; align-content: end; }
+    .mbtn { opacity: 1; transform: none; pointer-events: auto; }
+    .menu { width: 100%; padding: 96px 28px 32px 44px; }
   }
 </style>
 
 <script>
   const btn = document.querySelector<HTMLButtonElement>('[data-menu-btn]')!;
   const menu = document.querySelector<HTMLElement>('[data-menu]')!;
+  const shade = document.querySelector<HTMLElement>('[data-menu-shade]')!;
   const hero = document.querySelector('[data-hero]');
   const set = (open: boolean) => {
     btn.setAttribute('aria-expanded', String(open));
-    if (open) { menu.hidden = false; requestAnimationFrame(() => menu.classList.add('open')); document.documentElement.style.overflow = 'hidden'; }
-    else { menu.classList.remove('open'); document.documentElement.style.overflow = ''; setTimeout(() => { if (!menu.classList.contains('open')) menu.hidden = true; }, 800); }
+    if (open) {
+      menu.hidden = false; shade.hidden = false;
+      requestAnimationFrame(() => { menu.classList.add('open'); shade.classList.add('open'); });
+      document.documentElement.style.overflow = 'hidden';
+    } else {
+      menu.classList.remove('open'); shade.classList.remove('open');
+      document.documentElement.style.overflow = '';
+      setTimeout(() => { if (!menu.classList.contains('open')) { menu.hidden = true; shade.hidden = true; } }, 800);
+    }
   };
   btn.addEventListener('click', () => set(btn.getAttribute('aria-expanded') !== 'true'));
+  shade.addEventListener('click', () => set(false));
   menu.querySelectorAll('[data-menu-link]').forEach((a) => a.addEventListener('click', () => set(false)));
   addEventListener('keydown', (e) => { if (e.key === 'Escape' && btn.getAttribute('aria-expanded') === 'true') { set(false); btn.focus(); } });
-  // the button shows up once the top navigation has scrolled away (always shown on pages without a hero)
-  if (hero) new IntersectionObserver(([e]) => btn.classList.toggle('show', !e.isIntersecting), { rootMargin: '-35% 0px 0px 0px' }).observe(hero);
+  // like Bram: inline links on the first screen, the "Menu +" button once they have scrolled away
+  if (hero) new IntersectionObserver(([e]) => btn.classList.toggle('show', !e.isIntersecting), { rootMargin: '-80px 0px 0px 0px', threshold: 0 }).observe(hero.querySelector('.nav') ?? hero);
   else btn.classList.add('show');
 </script>

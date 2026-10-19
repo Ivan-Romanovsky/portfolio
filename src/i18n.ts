@@ -13,8 +13,8 @@ export const t = {
     title: 'Иван Романовский, веб-дизайнер',
     description: 'Проектирую интерфейсы и сайты, провожу UX- и CRO-аудиты и довожу проекты до работающего сайта.',
     nav: { cases: 'Проекты', about: 'Обо мне', services: 'Услуги', contact: 'Контакты', menu: 'Меню', close: 'Закрыть' },
-    cta: 'Написать',
-    hero: { line1: 'Веб-дизайнер.', line2: 'Интерфейсы, сайты, UX- и CRO-аудиты.', wordmark: 'Романовский' },
+    cta: 'Связаться',
+    hero: { line1: 'Веб-дизайнер.', line2: 'Интерфейсы, сайты, UX- и CRO-аудиты.', wordmark: 'Романовский', lines: ['Веб-дизайн и интерфейсы', 'для продуктов и бизнеса', 'UX- и CRO-аудиты'] },
     about: {
       // the {…} part gets the mint marker
       text: 'Проектирую интерфейсы и сайты, а потом смотрю, как ими пользуются {на самом деле}. Нахожу места, где люди теряются, и превращаю их в заявки.',
@@ -46,7 +46,7 @@ export const t = {
     description: 'I design interfaces and websites, run UX and CRO audits, and ship them as working sites.',
     nav: { cases: 'Work', about: 'About', services: 'Services', contact: 'Contact', menu: 'Menu', close: 'Close' },
     cta: 'Get in touch',
-    hero: { line1: 'Web designer.', line2: 'Interfaces, websites, UX and CRO audits.', wordmark: 'Romanovsky' },
+    hero: { line1: 'Web designer.', line2: 'Interfaces, websites, UX and CRO audits.', wordmark: 'Romanovsky', lines: ['Web design and interfaces', 'for products and businesses', 'UX and CRO audits'] },
     about: {
       text: 'I design interfaces and websites, then watch how people {actually use them}. I find the spots where they get lost and turn them into leads.',
       facts: [

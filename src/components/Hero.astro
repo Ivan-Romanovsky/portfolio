@@ -1,98 +1,78 @@
 ---
 import Nav from './Nav.astro';
 import { t, contacts, type Lang, url } from '../i18n';
-import grid from '../../public/character/grid.json';
 
 interface Props { lang: Lang }
 const { lang } = Astro.props;
 const d = t[lang];
 const base = import.meta.env.BASE_URL;
-const src = url(base, 'character/');
-const [bx, by, bx1, by1] = grid.box;
-// head canvas positioned in % of the frame, so it sits exactly over the base image at any size
-const box = {
-  left: (bx / grid.w) * 100, top: (by / grid.h) * 100,
-  width: ((bx1 - bx) / grid.w) * 100, height: ((by1 - by) / grid.h) * 100,
-};
+const model = url(base, 'character3d/model.glb');
+const [l1, l2, l3] = d.hero.lines;
 ---
-<section class="hero" style={`--stage:${grid.bg}`} data-hero>
+<!--
+  Bram van Vugt's first-screen layout around a live 3D character: name left and links right in the
+  header, three short lines on the left, a round contact button on the right. The background is one
+  flat warm colour with a mint disc behind the head, like a studio backdrop with a spotlight.
+-->
+<section class="hero" data-hero>
+  <div class="disc" aria-hidden="true"></div>
+  <div class="scene" data-character3d data-model={model}>
+    <canvas role="img" aria-label={lang === 'ru' ? 'Мультяшный 3D-Иван следит за курсором' : 'Cartoon 3D Ivan following the cursor'}></canvas>
+  </div>
+
   <Nav lang={lang} overlay />
 
-  <div class="intro" data-reveal>
-    <h1>
-      <span class="visually-hidden">{d.name}. </span>
-      <span class="line"><span>{d.hero.line1}</span></span>
-      <span class="line sub"><span>{d.hero.line2}</span></span>
-    </h1>
-  </div>
+  <h1 class="intro" data-reveal>
+    <span class="visually-hidden">{d.name}. </span>
+    <span class="line"><span class="flair">{l1}</span></span>
+    <span class="line"><span class="flair">{l2}</span></span>
+    <span class="line dim"><span>{l3}</span></span>
+  </h1>
 
   <a class="talk" href={`https://t.me/${contacts.telegram}`} target="_blank" rel="noopener" data-magnet>
     <span>{d.cta}</span>
   </a>
 
-  <div class="frame" data-character data-src={src}>
-    <img class="base" src={`${src}base.webp`} width={grid.w} height={grid.h} alt="" fetchpriority="high" decoding="async" />
-    <canvas class="head" width={bx1 - bx} height={by1 - by}
-      style={`left:${box.left}%;top:${box.top}%;width:${box.width}%;height:${box.height}%`} aria-hidden="true"></canvas>
-  </div>
-
-  <div class="wm" aria-hidden="true" data-wordmark>
-    <span class="line"><span>{d.hero.wordmark}<em>.</em></span></span>
-  </div>
 </section>
 
 <style>
-  .hero {
-    position: relative; overflow: hidden; isolation: isolate;
-    height: max(600px, min(100svh - 24px, 900px));
-    margin: 12px var(--gut-r) 0 var(--gut);
-    border-radius: var(--r); background: var(--stage);
+  .hero { position: relative; overflow: hidden; isolation: isolate; height: max(620px, 100svh); background: var(--paper); }
+  /* spotlight disc behind the head; drifts a little with the cursor (set from the script) */
+  .disc {
+    position: absolute; z-index: 0; left: 50%; top: 50%; width: min(64vh, 52vw); aspect-ratio: 1; border-radius: 50%;
+    background: var(--mint); transform: translate(calc(-50% + var(--dx, 0px)), calc(-58% + var(--dy, 0px)));
+    opacity: 0; transition: opacity 1s var(--ease);
   }
+  .hero.ready .disc { opacity: 1; }
+  .scene { position: absolute; inset: 0; z-index: 1; }
+  .scene canvas { display: block; width: 100%; height: 100%; opacity: 0; transform: translateY(24px); transition: opacity 0.9s var(--ease), transform 1.2s var(--ease); }
+  .scene canvas.on { opacity: 1; transform: none; }
 
-  .intro { position: absolute; z-index: 2; left: var(--pad); top: 38%; max-width: 22ch; }
-  h1 { margin: 0; font-weight: 500; font-size: clamp(18px, 1.5vw, 22px); line-height: 1.3; letter-spacing: -0.02em; }
-  .sub { color: var(--ink-2); font-weight: 400; }
+  .intro { position: absolute; z-index: 2; left: 36px; top: 31%; margin: 0; font-weight: 500; font-size: clamp(18px, 1.45vw, 21px); line-height: 1.24; letter-spacing: -0.02em; }
+  .intro .dim { color: var(--ink-2); font-weight: 400; opacity: 0.8; }
 
-  /* round CTA floating in the stage, like Bram's "Koffie?" */
   .talk {
-    position: absolute; z-index: 3; right: clamp(24px, 9vw, 160px); top: 30%;
-    width: clamp(96px, 8vw, 124px); aspect-ratio: 1; border-radius: 50%;
+    position: absolute; z-index: 3; right: clamp(24px, 13vw, 200px); top: 21%;
+    width: clamp(88px, 6.6vw, 104px); aspect-ratio: 1; border-radius: 50%;
     display: grid; place-items: center; text-align: center; text-decoration: none;
-    background: var(--ink); color: var(--bg); font-size: 15px; font-weight: 500; line-height: 1.15;
+    background: var(--ink); color: var(--bg); font-size: 15px; font-weight: 400; line-height: 1.15;
     transition: background-color 0.35s var(--ease), color 0.35s var(--ease);
     will-change: transform;
   }
   .talk span { display: block; max-width: 9ch; }
   @media (hover: hover) { .talk:hover { background: var(--mint); color: var(--ink); } }
 
-  /* the generated frame is 16:9; shoulders run off the bottom edge */
-  .frame {
-    position: absolute; left: 50%; bottom: 0; z-index: 0;
-    height: 96%; aspect-ratio: 16 / 9; transform: translateX(-50%);
-    -webkit-mask-image: radial-gradient(ellipse 60% 76% at 50% 52%, #000 72%, transparent 100%);
-            mask-image: radial-gradient(ellipse 60% 76% at 50% 52%, #000 72%, transparent 100%);
-  }
-  .base { width: 100%; height: 100%; object-fit: cover; }
-  .head { position: absolute; display: block; }
-
-  /* giant name set over the shirt, cut by the bottom edge */
-  .wm {
-    position: absolute; z-index: 1; left: 0; right: 0; bottom: -0.2em; text-align: center; white-space: nowrap;
-    font-weight: 500; font-size: clamp(56px, 15.2vw, 232px); line-height: 1; letter-spacing: -0.065em; color: var(--ink);
-  }
-  .wm .line { padding-bottom: 0; margin-bottom: 0; }
-  .wm em { font-style: normal; color: var(--mint); -webkit-text-stroke: 0.02em var(--ink); }
-
   @media (max-width: 760px) {
-    .hero { height: max(560px, calc(100svh - 24px)); }
-    .intro { top: 92px; }
-    .talk { top: auto; bottom: 26%; right: 20px; width: 92px; font-size: 14px; }
-    .frame { height: 74%; }
+    .hero { height: max(560px, 88svh); }
+    .disc { width: 84vw; top: 52%; }
+    .scene { top: 16%; bottom: 12%; }
+    .intro { left: 20px; top: 84px; }
+    .talk { top: auto; bottom: 3.5vh; right: 18px; width: 84px; font-size: 14px; }
   }
 </style>
 
 <script>
-  import { mountCharacter } from '../scripts/character';
-  const el = document.querySelector<HTMLElement>('[data-character]');
-  if (el) mountCharacter(el);
+  import { mountCharacter3D } from '../scripts/character3d';
+  const el = document.querySelector<HTMLElement>('[data-character3d]');
+  if (el) mountCharacter3D(el).then(() => el.closest('.hero')?.classList.add('ready')).catch((e) => console.error(e));
 </script>
